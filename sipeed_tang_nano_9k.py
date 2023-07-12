@@ -11,21 +11,21 @@ from migen import *
 
 from litex.gen import *
 
-import sipeed_tang_nano_9K_platform
+from litex_boards.platforms import sipeed_tang_nano_9k
 
 from litex.soc.cores.clock.gowin_gw1n import GW1NPLL
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.soc import SoCRegion
 from litex.soc.integration.builder import *
+from litex.soc.cores.timer import *
+from litex.soc.cores.gpio import *
 
 kB = 1024
 mB = 1024*kB
 
-# CRG stands for Clock Reset Generator
-# Here at least a clock and reset are added, and any PLLs. 
-# In this case a PLL with the same in and output frequency and a user button is used as reset for the PLL. 
+# CRG ----------------------------------------------------------------------------------------------
 class _CRG(LiteXModule):
-    def __init__(self, platform, sys_clk_freq, with_video_pll=False):
+    def __init__(self, platform, sys_clk_freq):
         self.rst    = Signal()
         self.cd_sys = ClockDomain()
 
@@ -43,23 +43,52 @@ class _CRG(LiteXModule):
 class BaseSoC(SoCCore):
     def __init__(self, sys_clk_freq=27e6, bios_flash_offset=0x0,
         **kwargs):
-        platform = sipeed_tang_nano_9K_platform.Platform()
+        platform = sipeed_tang_nano_9k.Platform()
 
-        # Notice the custom CRG here, _CRG instead of CRG
+        # CRG --------------------------------------------------------------------------------------
         self.crg = _CRG(platform, sys_clk_freq)
 
         # SoCCore ----------------------------------------------------------------------------------
-        kwargs["integrated_rom_size"] = 64*kB
-        kwargs["integrated_sram_size"] = 8*kB
-        SoCCore.__init__(self, platform, sys_clk_freq, ident="Still tiny LiteX SoC on Tang Nano 9K", **kwargs)
+        kwargs["integrated_rom_size"] = 128*kB
+        kwargs["integrated_ram_size"] = 8*kB
+        SoCCore.__init__(self, platform, sys_clk_freq, ident="LiteX SoC on Tang Nano 9K", **kwargs)
 
+        # HyperRAM ---------------------------------------------------------------------------------
+        if not self.integrated_main_ram_size:
+            # TODO: Use second 32Mbit PSRAM chip.
+            dq      = platform.request("IO_psram_dq")
+            rwds    = platform.request("IO_psram_rwds")
+            reset_n = platform.request("O_psram_reset_n")
+            cs_n    = platform.request("O_psram_cs_n")
+            ck      = platform.request("O_psram_ck")
+            ck_n    = platform.request("O_psram_ck_n")
+            class HyperRAMPads:
+                def __init__(self, n):
+                    self.clk   = Signal()
+                    self.rst_n = reset_n[n]
+                    self.dq    = dq[8*n:8*(n+1)]
+                    self.cs_n  = cs_n[n]
+                    self.rwds  = rwds[n]
+            # FIXME: Issue with upstream HyperRAM core, so use old one. Need to investigate.
+            if not os.path.exists("hyperbus.py"):
+                os.system("wget https://github.com/litex-hub/litex-boards/files/8831568/hyperbus.py.txt")
+                os.system("mv hyperbus.py.txt hyperbus.py")
+            from hyperbus import HyperRAM
+            hyperram_pads = HyperRAMPads(0)
+            self.comb += ck[0].eq(hyperram_pads.clk)
+            self.comb += ck_n[0].eq(~hyperram_pads.clk)
+            self.hyperram = HyperRAM(hyperram_pads)
+            self.bus.add_slave("main_ram", slave=self.hyperram.bus, region=SoCRegion(origin=self.mem_map["main_ram"], size=4*mB))
+            
+        self.timer1 = Timer()
+        self.leds = GPIOOut(pads = platform.request_all("user_led"))
+        
+        self.add_constant("CONFIG_MAIN_RAM_INIT") # This disables the memory test on the hyperram and saves some boottime
 
 # Build --------------------------------------------------------------------------------------------
-# Some extra arguments got added, sys-clk-freq to change the CPU frequency, we got a PLL after all. and a bios flash offset
-# Try --sys-clk-freq=54e6 to run it at twice the clock speed!
 def main():
     from litex.build.parser import LiteXArgumentParser
-    parser = LiteXArgumentParser(platform=sipeed_tang_nano_9K_platform.Platform, description="Still tiny LiteX SoC on Tang Nano 9K.")
+    parser = LiteXArgumentParser(platform=sipeed_tang_nano_9k.Platform, description="LiteX SoC on Tang Nano 9K.")
     parser.add_target_argument("--flash",                action="store_true",      help="Flash Bitstream.")
     parser.add_target_argument("--sys-clk-freq",         default=27e6, type=float, help="System clock frequency.")
     parser.add_target_argument("--bios-flash-offset",    default="0x0",            help="BIOS offset in SPI Flash.")
