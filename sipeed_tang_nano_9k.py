@@ -19,6 +19,9 @@ from litex.soc.integration.soc import SoCRegion
 from litex.soc.integration.builder import *
 from litex.soc.cores.timer import *
 from litex.soc.cores.gpio import *
+from litex.soc.cores.bitbang import I2CMaster
+from litex.soc.cores.spi import SPIMaster
+from litex.soc.cores import uart
 
 kB = 1024
 mB = 1024*kB
@@ -80,10 +83,22 @@ class BaseSoC(SoCCore):
             self.hyperram = HyperRAM(hyperram_pads)
             self.bus.add_slave("main_ram", slave=self.hyperram.bus, region=SoCRegion(origin=self.mem_map["main_ram"], size=4*mB))
             
+        self.add_constant("CONFIG_MAIN_RAM_INIT") # This disables the memory test on the hyperram and saves some boottime
+        
         self.timer1 = Timer()
+        self.timer2 = Timer()
+        
         self.leds = GPIOOut(pads = platform.request_all("user_led"))
         
-        self.add_constant("CONFIG_MAIN_RAM_INIT") # This disables the memory test on the hyperram and saves some boottime
+        # Serial stuff 
+        self.i2c0 = I2CMaster(pads = platform.request("i2c0"))
+        
+        uartPhy = uart.UARTPHY(
+             pads     = self.platform.request("serial0"),
+             clk_freq = self.sys_clk_freq,
+             baudrate = 115200)
+        
+        self.serial0 = uart.UART(uartPhy)
 
 # Build --------------------------------------------------------------------------------------------
 def main():

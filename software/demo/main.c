@@ -7,6 +7,7 @@
 
 #include <irq.h>
 #include <libbase/uart.h>
+#include <libbase/i2c.h>
 #include <generated/csr.h>
 #include "Drivers/Uart/uarthelpers.h"
 #include "Drivers/Timer/Timer1.h"
@@ -32,6 +33,7 @@ static void help(void)
 	puts("help               - Show this command");
 	puts("reboot             - Reboot CPU");
 	puts("blink              - Blink LEDs");
+	puts("I2C_scan           - Scan the I2C bus");
 }
 
 /*-----------------------------------------------------------------------*/
@@ -70,6 +72,16 @@ static void console_service(void)
 			Timer1_busy_wait(500);
 		}
 	}
+	else if(strcmp(token, "I2C_scan") == 0)
+	{
+		for(int i = 0; i < 0x7F; ++i)
+		{
+			if(i2c_poll(i))
+			{
+				printf("I2C device found on address %x\n", i);
+			}
+		}
+	}
 }
 
 int main(void)
@@ -79,6 +91,7 @@ int main(void)
 	irq_setie(1);
 #endif
 	uart_init();
+	i2c_send_init_cmds();
 
 	help();
 	prompt();
