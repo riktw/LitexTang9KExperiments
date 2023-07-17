@@ -11,21 +11,40 @@
 #include <generated/csr.h>
 #include "Drivers/Uart/uarthelpers.h"
 #include "Drivers/Timer/Timer1.h"
+#include "Drivers/Timer/Timer2.h"
+#include "Drivers/Uart/Serial0.h"
+#include "Drivers/Gpio/GpioIn.h"
 
-/*-----------------------------------------------------------------------*/
-/* Uart                                                                  */
-/*-----------------------------------------------------------------------*/
+volatile bool buttonIRQSet = false;
 
+void handle_isr(int irqs);
+void IrqBlink(void);
 
-static void prompt(void)
-{
-	printf("Hello from vscode!\n");
+void handle_isr(int irqs)
+{	
+	if(irqs & (1 << GPIO_INTERRUPT))
+	{
+		GpioInClearPendingInterrupt();
+		buttonIRQSet = true;
+	}
+	else if(irqs & (1 << TIMER1_INTERRUPT))
+	{
+		Timer1ClearPendingInterrupt();
+	}
+	else if(irqs & (1 << TIMER2_INTERRUPT))
+	{
+		Timer2ClearPendingInterrupt();
+		IrqBlink();
+	}
+	else
+	{
+		printf("Unexpected IRQ: %x\n", irqs);
+	}
 }
 
 /*-----------------------------------------------------------------------*/
 /* Help                                                                  */
 /*-----------------------------------------------------------------------*/
-
 static void help(void)
 {
 	puts("\nLiteX minimal demo app built "__DATE__" "__TIME__"\n");
@@ -34,12 +53,15 @@ static void help(void)
 	puts("reboot             - Reboot CPU");
 	puts("blink              - Blink LEDs");
 	puts("I2C_scan           - Scan the I2C bus");
+	puts("serial0_test       - Send a message on serial0");
+	puts("gpio_in            - Read gpio input");
+	puts("start_irq_blink    - Use Timer2 in irq mode to blink some LEDs");
+	puts("stop_irq_blink     - Stop Timer2 based blink");
 }
 
 /*-----------------------------------------------------------------------*/
 /* Commands                                                              */
 /*-----------------------------------------------------------------------*/
-
 static void reboot_cmd(void)
 {
 	ctrl_reset_write(1);
@@ -49,7 +71,6 @@ static void reboot_cmd(void)
 /*-----------------------------------------------------------------------*/
 /* Console service / Main                                                */
 /*-----------------------------------------------------------------------*/
-
 static void console_service(void)
 {
 	char *str;
@@ -82,23 +103,60 @@ static void console_service(void)
 			}
 		}
 	}
+	else if(strcmp(token, "serial0_test") == 0)
+	{
+		char hello[] = "Hello world!\n";
+		for(int i = 0; i < sizeof(hello); ++i)
+		{
+			Serial0_write(hello[i]);
+			printf("%c", hello[i]);
+		}
+		printf("Send hello world over serial0!\n");
+	}
+	else if(strcmp(token, "gpio_in") == 0)
+	{
+		printf("Waiting for interrupt. Press the user button to continue!\n");
+		GpioInEnableInterrupt();
+		while(!buttonIRQSet);
+		buttonIRQSet = false;
+		GpioInDisableInterrupt();
+		printf("Button pressed!\n");
+	}
+	else if(strcmp(token, "start_irq_blink") == 0)
+	{
+		Timer2PeriodicInterrupt(500);
+	}
+	else if(strcmp(token, "stop_irq_blink") == 0)
+	{
+		Timer2DisableInterrupt();
+	}
 }
 
 int main(void)
 {
 #ifdef CONFIG_CPU_HAS_INTERRUPT
-	irq_setmask(0);
+	irq_setmask(
+		(1 << GPIO_INTERRUPT) 	|
+		(1 << TIMER1_INTERRUPT) | 
+		(1 << TIMER2_INTERRUPT));
 	irq_setie(1);
 #endif
+
 	uart_init();
+	Serial0_init();
 	i2c_send_init_cmds();
+	GpioInInitInterrupt(MODE_EDGE, EDGE_FALLING);
 
 	help();
-	prompt();
 
 	while(1) {
 		console_service();
 	}
 
 	return 0;
+}
+
+void IrqBlink(void)
+{
+	leds_out_write(~leds_out_read());
 }

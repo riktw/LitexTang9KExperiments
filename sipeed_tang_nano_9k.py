@@ -44,6 +44,27 @@ class _CRG(LiteXModule):
 
 # BaseSoC ------------------------------------------------------------------------------------------
 class BaseSoC(SoCCore):
+    # Helper functions
+    def add_serial(self, name, baudrate, fifo_depth=16):
+        from litex.soc.cores import uart
+
+        setattr(self.submodules, "%s_phy" % name, uart.UARTPHY(
+            pads     = self.platform.request(name),
+            clk_freq = self.sys_clk_freq,
+            baudrate = baudrate))
+
+        setattr(self.submodules, name, ResetInserter()(uart.UART(getattr(self, "%s_phy" % name),
+            tx_fifo_depth = fifo_depth,
+            rx_fifo_depth = fifo_depth)))
+
+        self.csr.add("%s_phy" % name, use_loc_if_exists=True)
+        self.csr.add(name, use_loc_if_exists=True)
+        if hasattr(self.cpu, "interrupt"):
+            self.irq.add(name, use_loc_if_exists=True)
+        else:
+            self.add_constant("UART_POLLING")
+    
+    # Actual SoC builder
     def __init__(self, sys_clk_freq=27e6, bios_flash_offset=0x0,
         **kwargs):
         platform = sipeed_tang_nano_9k.Platform()
@@ -93,12 +114,15 @@ class BaseSoC(SoCCore):
         # Serial stuff 
         self.i2c0 = I2CMaster(pads = platform.request("i2c0"))
         
-        uartPhy = uart.UARTPHY(
-             pads     = self.platform.request("serial0"),
-             clk_freq = self.sys_clk_freq,
-             baudrate = 115200)
+        self.irq.add("serial0", use_loc_if_exists=True)
         
-        self.serial0 = uart.UART(uartPhy)
+        self.add_serial("serial0", 115200)
+        
+        self.gpio = GPIOIn(platform.request("user_btn", 1), with_irq=True)
+        self.irq.add("gpio", use_loc_if_exists=True)
+        
+        self.irq.add("timer1",  use_loc_if_exists=True)
+        self.irq.add("timer2",  use_loc_if_exists=True)
 
 # Build --------------------------------------------------------------------------------------------
 def main():
