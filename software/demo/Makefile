@@ -1,5 +1,6 @@
-BUILD_DIR=../..//build/sipeed_tang_nano_9k
-SOC_DIR=../../../litex/litex/litex/soc/
+BUILD_DIR=../../build/sipeed_tang_nano_9k
+#SOC_DIR=/usr/local/share/litex/litex/litex/litex/soc/
+SOC_DIR=/home/rik/Documents/Git/litex/litex/litex/soc/
 
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIR)/software/common.mak

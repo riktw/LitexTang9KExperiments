@@ -11,7 +11,7 @@ from migen import *
 
 from litex.gen import *
 
-from litex_boards.platforms import sipeed_tang_nano_9k
+from platform import sipeed_tang_nano_9k
 
 from litex.soc.cores.clock.gowin_gw1n import GW1NPLL
 from litex.soc.integration.soc_core import *
@@ -123,6 +123,7 @@ class BaseSoC(SoCCore):
         
         self.irq.add("timer1",  use_loc_if_exists=True)
         self.irq.add("timer2",  use_loc_if_exists=True)
+
 
 # Build --------------------------------------------------------------------------------------------
 def main():

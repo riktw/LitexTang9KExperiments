@@ -143,9 +143,9 @@ int main(void)
 #endif
 
 	uart_init();
-	Serial0_init();
-	i2c_send_init_cmds();
-	GpioInInitInterrupt(MODE_EDGE, EDGE_FALLING);
+	//Serial0_init();
+	//i2c_send_init_cmds();
+	//GpioInInitInterrupt(MODE_EDGE, EDGE_FALLING);
 
 	help();
 
