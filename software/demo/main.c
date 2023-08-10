@@ -17,29 +17,34 @@
 
 volatile bool buttonIRQSet = false;
 
-void handle_isr(int irqs);
+unsigned int isr_handler(int irqs);
 void IrqBlink(void);
 
-void handle_isr(int irqs)
+unsigned int isr_handler(int irqs)
 {	
+	unsigned int irqHandled = 0;
 	if(irqs & (1 << GPIO_INTERRUPT))
 	{
 		GpioInClearPendingInterrupt();
 		buttonIRQSet = true;
+		irqHandled = 1;
 	}
 	else if(irqs & (1 << TIMER1_INTERRUPT))
 	{
 		Timer1ClearPendingInterrupt();
+		irqHandled = 1;
 	}
 	else if(irqs & (1 << TIMER2_INTERRUPT))
 	{
 		Timer2ClearPendingInterrupt();
 		IrqBlink();
+		irqHandled = 1;
 	}
 	else
 	{
 		printf("Unexpected IRQ: %x\n", irqs);
 	}
+	return irqHandled;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -47,7 +52,7 @@ void handle_isr(int irqs)
 /*-----------------------------------------------------------------------*/
 static void help(void)
 {
-	puts("\nLiteX minimal demo app built "__DATE__" "__TIME__"\n");
+	puts("\nLiteX minimal demo app built with Docker on "__DATE__" "__TIME__"\n");
 	puts("Available commands:");
 	puts("help               - Show this command");
 	puts("reboot             - Reboot CPU");
@@ -108,7 +113,7 @@ static void console_service(void)
 		char hello[] = "Hello world!\n";
 		for(int i = 0; i < sizeof(hello); ++i)
 		{
-			Serial0_write(hello[i]);
+			//Serial0_write(hello[i]);
 			printf("%c", hello[i]);
 		}
 		printf("Send hello world over serial0!\n");
@@ -143,9 +148,9 @@ int main(void)
 #endif
 
 	uart_init();
-	//Serial0_init();
-	//i2c_send_init_cmds();
-	//GpioInInitInterrupt(MODE_EDGE, EDGE_FALLING);
+	Serial0_init();
+	i2c_send_init_cmds();
+	GpioInInitInterrupt(MODE_EDGE, EDGE_FALLING);
 
 	help();
 

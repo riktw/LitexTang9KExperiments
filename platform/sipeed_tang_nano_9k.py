@@ -104,11 +104,15 @@ _io = [
     ),
     
     #Serial
-    ("serial0", 0,
+    ("uart0", 0,
         Subsignal("rx", Pins("41")),
         Subsignal("tx", Pins("42")),
         IOStandard("LVCMOS33")
     ),
+    
+    #pwm
+    ("pwm0", 0, Pins("51"), IOStandard("LVCMOS33")),
+    ("pwm1", 0, Pins("53"), IOStandard("LVCMOS33")),
 ]
 
 # Connectors ---------------------------------------------------------------------------------------
