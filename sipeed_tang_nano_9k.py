@@ -93,6 +93,7 @@ class BaseSoC(SoCCore):
         self.leds = GPIOOut(pads = platform.request_all("user_led"))
         
         self.pwm0 = PwmModule(platform.request("pwm0"))
+        self.pwm1 = PwmModule(platform.request("pwm1"))
         
         # Serial stuff 
         self.i2c0 = I2CMaster(pads = platform.request("i2c0"))

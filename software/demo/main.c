@@ -152,6 +152,19 @@ int main(void)
 	i2c_send_init_cmds();
 	GpioInInitInterrupt(MODE_EDGE, EDGE_FALLING);
 
+	// Set some default PWM values
+	pwm0_divider_write(10);
+	pwm0_maxCount_write(1000);
+	pwm0_toggle_write(400);
+	pwm0_enable_write(1);
+
+	pwm1_divider_write(20);
+	pwm1_maxCount_write(1000);
+	pwm1_toggle_write(700);
+	pwm1_enable_write(1);
+
+
+
 	help();
 
 	while(1) {
