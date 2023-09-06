@@ -23,6 +23,7 @@ from litex.soc.cores.gpio import *
 from litex.soc.cores.bitbang import I2CMaster
 from litex.soc.cores.spi import SPIMaster
 from litex.soc.cores import uart
+from hyperbus import HyperRAM
 
 kB = 1024
 mB = 1024*kB
@@ -74,11 +75,7 @@ class BaseSoC(SoCCore):
                     self.dq    = dq[8*n:8*(n+1)]
                     self.cs_n  = cs_n[n]
                     self.rwds  = rwds[n]
-            # FIXME: Issue with upstream HyperRAM core, so use old one. Need to investigate.
-            if not os.path.exists("hyperbus.py"):
-                os.system("wget https://github.com/litex-hub/litex-boards/files/8831568/hyperbus.py.txt")
-                os.system("mv hyperbus.py.txt hyperbus.py")
-            from hyperbus import HyperRAM
+            # FIXME: Issue with upstream HyperRAM core, so the old one is checked in in the repo for now
             hyperram_pads = HyperRAMPads(0)
             self.comb += ck[0].eq(hyperram_pads.clk)
             self.comb += ck_n[0].eq(~hyperram_pads.clk)

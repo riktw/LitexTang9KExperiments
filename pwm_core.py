@@ -9,7 +9,7 @@ class PwmModule(LiteXModule):
         self.enable = CSRStorage(size=1, reset=0, description="Enable the PWM peripheral")
         self.divider = CSRStorage(size=16, reset=0, description="Clock divider")
         self.maxCount = CSRStorage(size=16, reset=0, description="Max count for the PWM counter")
-        self.toggle = CSRStorage(size=16, reset=0, description="IO toggle value")
+        self.dutycycle = CSRStorage(size=16, reset=0, description="IO dutycycle value")
         
         divcounter = Signal(16, reset=0)
         pwmcounter = Signal(16, reset=0)
@@ -29,5 +29,5 @@ class PwmModule(LiteXModule):
                 )
             ]
                     
-        sync += pad.eq(self.enable.storage & (pwmcounter < self.toggle.storage))
+        sync += pad.eq(self.enable.storage & (pwmcounter < self.dutycycle.storage))
         
